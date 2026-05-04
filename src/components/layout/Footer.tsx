@@ -11,11 +11,11 @@ const quickLinks = [
 ]
 
 const legalLinks = [
-  "Privacy Policy",
-  "Terms of Service",
-  "Risk Disclosure",
-  "Cookie Policy",
-  "KYC / AML Policy",
+  { label: "Privacy Policy",  href: "/privacy-policy" },
+  { label: "Terms of Service", href: "/terms-of-service" },
+  { label: "Risk Disclosure",  href: "/risk-disclosure" },
+  { label: "Cookie Policy",   href: "/cookie-policy" },
+  { label: "KYC / AML Policy",href: "/kyc-aml-policy" },
 ]
 
 const socialLinks = [
@@ -88,12 +88,12 @@ export const Footer = () => {
             <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-gold mb-6">Legal</h4>
             <ul className="space-y-3">
               {legalLinks.map((link) => (
-                <li key={link}>
+                <li key={link.label}>
                   <Link
-                    to="#"
+                    to={link.href}
                     className="text-sm text-muted-foreground hover:text-gold transition-colors duration-200"
                   >
-                    {link}
+                    {link.label}
                   </Link>
                 </li>
               ))}
@@ -136,10 +136,15 @@ export const Footer = () => {
             © {new Date().getFullYear()} ProGlobal Markets Ltd. All rights reserved.
           </p>
           <div className="flex gap-6">
-            {["Privacy", "Terms", "Cookies", "Sitemap"].map((label) => (
-              <a key={label} href="#" className="text-xs text-muted-foreground hover:text-gold transition-colors duration-200">
+            {[
+              { label: "Privacy", href: "/privacy-policy" },
+              { label: "Terms",   href: "/terms-of-service" },
+              { label: "Cookies", href: "/cookie-policy" },
+              { label: "Risk",    href: "/risk-disclosure" },
+            ].map(({ label, href }) => (
+              <Link key={label} to={href} className="text-xs text-muted-foreground hover:text-gold transition-colors duration-200">
                 {label}
-              </a>
+              </Link>
             ))}
           </div>
         </div>

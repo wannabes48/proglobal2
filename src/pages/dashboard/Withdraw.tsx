@@ -11,7 +11,7 @@ import { doc, getDoc, addDoc, collection, updateDoc, increment } from "firebase/
 import { db } from "@/lib/firebase";
 
 const Withdraw = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
   const [wallet, setWallet] = useState<any>(null);
   const [amount, setAmount] = useState("");
@@ -95,6 +95,17 @@ const Withdraw = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {profile?.kyc_status !== "verified" ? (
+              <div className="p-6 text-center space-y-4 bg-orange-500/10 rounded-2xl border border-orange-500/20">
+                <h3 className="text-lg font-bold text-orange-500">KYC Verification Required</h3>
+                <p className="text-sm text-muted-foreground">
+                  To comply with anti-money laundering regulations, you must verify your identity before you can withdraw funds.
+                </p>
+                <Button variant="outline" className="w-full border-orange-500/50 text-orange-500 hover:bg-orange-500/10" onClick={() => window.location.href = '/dashboard/kyc'}>
+                  Complete KYC Now
+                </Button>
+              </div>
+            ) : (
             <form onSubmit={handleWithdraw} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="amount">Amount (USD)</Label>
@@ -141,6 +152,7 @@ const Withdraw = () => {
                 Withdrawals are usually processed within 24 hours. Please double-check your wallet address.
               </p>
             </form>
+            )}
           </CardContent>
         </Card>
       </div>

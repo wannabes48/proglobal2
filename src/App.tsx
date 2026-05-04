@@ -5,6 +5,7 @@ import Plans from "./pages/Plans"
 import HowItWorks from "./pages/HowItWorks"
 import Contact from "./pages/Contact"
 import Blog from "./pages/Blog"
+import BlogPost from "./pages/BlogPost"
 import Ranking from "./pages/Ranking"
 import NotFound from "./pages/NotFound"
 import Auth from "./pages/Auth"
@@ -21,6 +22,11 @@ import AdminDashboard from "./pages/admin/Dashboard"
 import ManageUsers from "./pages/admin/Users"
 import KYCApprovals from "./pages/admin/KYC"
 import AdminTransactions from "./pages/admin/Transactions"
+import PrivacyPolicy from "./pages/legal/PrivacyPolicy"
+import TermsOfService from "./pages/legal/TermsOfService"
+import RiskDisclosure from "./pages/legal/RiskDisclosure"
+import CookiePolicy from "./pages/legal/CookiePolicy"
+import KYCAMLPolicy from "./pages/legal/KYCAMLPolicy"
 import { ProtectedRoute, AdminRoute } from "./components/layout/ProtectedRoute"
 import { Toaster } from "./components/ui/toaster"
 
@@ -35,9 +41,17 @@ function App() {
         <Route path="/how-it-works" element={<HowItWorks />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/blog" element={<Blog />} />
+        <Route path="/blog/:id" element={<BlogPost />} />
         <Route path="/ranking" element={<Ranking />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+
+        {/* Legal Routes */}
+        <Route path="/privacy-policy"  element={<PrivacyPolicy />} />
+        <Route path="/terms-of-service" element={<TermsOfService />} />
+        <Route path="/risk-disclosure" element={<RiskDisclosure />} />
+        <Route path="/cookie-policy"   element={<CookiePolicy />} />
+        <Route path="/kyc-aml-policy"  element={<KYCAMLPolicy />} />
 
         {/* Protected User Routes */}
         <Route path="/dashboard" element={

@@ -6,10 +6,12 @@ import {
   createUserWithEmailAndPassword, 
   signOut as firebaseSignOut,
   sendPasswordResetEmail,
-  updateProfile
+  updateProfile,
+  GoogleAuthProvider,
+  signInWithPopup
 } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { onSnapshot, doc, getDoc, setDoc } from "firebase/firestore";
 
 interface AuthContextType {
   user: User | null;
@@ -17,6 +19,7 @@ interface AuthContextType {
   loading: boolean;
   signIn: typeof signInWithEmailAndPassword;
   signUp: (email: string, password: string, fullName: string) => Promise<any>;
+  signInWithGoogle: () => Promise<any>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
 }
@@ -29,48 +32,44 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let profileUnsubscribe: (() => void) | undefined;
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       if (user) {
-        // Fetch user profile from Firestore
+        // Listen to user profile from Firestore in real-time
         const docRef = doc(db, "profiles", user.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setProfile(docSnap.data());
-        }
+        profileUnsubscribe = onSnapshot(docRef, (docSnap) => {
+          if (docSnap.exists()) {
+            setProfile(docSnap.data());
+          }
+        });
       } else {
         setProfile(null);
+        if (profileUnsubscribe) profileUnsubscribe();
       }
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      if (profileUnsubscribe) profileUnsubscribe();
+    };
   }, []);
 
-  const value = {
-    user,
-    profile,
-    loading,
-    signIn: (email, password) => signInWithEmailAndPassword(auth, email, password),
-    signUp: async (email, password, fullName) => {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      
-      // Update Firebase profile
-      await updateProfile(user, { displayName: fullName });
-      
-      // Create Firestore profile
+  const ensureWalletAndProfile = async (user: User, extra?: object) => {
+    const docRef = doc(db, "profiles", user.uid);
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) {
       const newProfile = {
         user_id: user.uid,
-        full_name: fullName,
-        email: email,
-        kyc_status: 'pending',
+        full_name: user.displayName || "User",
+        email: user.email || "",
+        kyc_status: "unverified",
         created_at: new Date().toISOString(),
+        ...extra,
       };
-      
-      await setDoc(doc(db, "profiles", user.uid), newProfile);
-      
-      // Create initial wallet
+      await setDoc(docRef, newProfile);
       await setDoc(doc(db, "wallets", user.uid), {
         user_id: user.uid,
         balance: 0,
@@ -78,12 +77,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         total_withdrawn: 0,
         total_earned: 0,
       });
-
       setProfile(newProfile);
+    } else {
+      setProfile(docSnap.data());
+    }
+  };
+
+  const value = {
+    user,
+    profile,
+    loading,
+    signIn: (email: string, password: string) => signInWithEmailAndPassword(auth, email, password),
+    signUp: async (email: string, password: string, fullName: string) => {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const u = userCredential.user;
+      await updateProfile(u, { displayName: fullName });
+      await ensureWalletAndProfile(u, { full_name: fullName, auth_provider: "email" });
+      return userCredential;
+    },
+    signInWithGoogle: async () => {
+      const provider = new GoogleAuthProvider();
+      provider.addScope("email");
+      provider.addScope("profile");
+      const userCredential = await signInWithPopup(auth, provider);
+      await ensureWalletAndProfile(userCredential.user, { auth_provider: "google" });
       return userCredential;
     },
     signOut: () => firebaseSignOut(auth),
-    resetPassword: (email) => sendPasswordResetEmail(auth, email),
+    resetPassword: (email: string) => sendPasswordResetEmail(auth, email),
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

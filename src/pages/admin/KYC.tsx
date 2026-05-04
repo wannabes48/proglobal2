@@ -35,14 +35,14 @@ const KYCApprovals = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <Card className="bg-card/30 border-border overflow-hidden">
+        <Card className="bg-card/30 border-[hsl(43_85%_52%/0.15)] overflow-hidden backdrop-blur-xl">
           <CardHeader>
             <CardTitle>Pending KYC Requests</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
-                <thead className="text-xs uppercase bg-muted/50 text-muted-foreground">
+                <thead className="text-xs uppercase bg-[hsl(43_85%_52%/0.05)] text-muted-foreground border-b border-[hsl(43_85%_52%/0.15)]">
                   <tr>
                     <th className="px-6 py-4">User</th>
                     <th className="px-6 py-4">Document</th>
@@ -50,17 +50,17 @@ const KYCApprovals = () => {
                     <th className="px-6 py-4">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody className="divide-y divide-[hsl(43_85%_52%/0.1)]">
                   {requests.map((r) => (
-                    <tr key={r.id} className="hover:bg-muted/30 transition-colors">
+                    <tr key={r.id} className="hover:bg-[hsl(43_85%_52%/0.02)] transition-colors">
                       <td className="px-6 py-4">
-                        <p className="font-bold">{r.full_name}</p>
+                        <p className="font-bold text-foreground">{r.full_name}</p>
                         <p className="text-xs text-muted-foreground">{r.email}</p>
                       </td>
                       <td className="px-6 py-4">
                         <Button 
                           variant="link" 
-                          className="p-0 h-auto gap-2 text-accent"
+                          className="p-0 h-auto gap-2 text-gold hover:text-gold/80"
                           onClick={() => window.open(r.kyc_document_url, '_blank')}
                         >
                           <FileText className="w-4 h-4" />
@@ -75,7 +75,7 @@ const KYCApprovals = () => {
                         <div className="flex gap-2">
                           <Button 
                             size="sm" 
-                            className="bg-green-500 hover:bg-green-600 text-white gap-1"
+                            className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border border-emerald-500/20 gap-1"
                             onClick={() => handleAction(r.id, "verified")}
                           >
                             <Check className="w-4 h-4" />
@@ -83,8 +83,7 @@ const KYCApprovals = () => {
                           </Button>
                           <Button 
                             size="sm" 
-                            variant="destructive" 
-                            className="gap-1"
+                            className="bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 gap-1"
                             onClick={() => handleAction(r.id, "rejected")}
                           >
                             <X className="w-4 h-4" />
