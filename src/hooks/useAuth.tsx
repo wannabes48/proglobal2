@@ -6,9 +6,13 @@ import {
   createUserWithEmailAndPassword, 
   signOut as firebaseSignOut,
   sendPasswordResetEmail,
+  sendEmailVerification,
   updateProfile,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  multiFactor,
+  TotpMultiFactorGenerator,
+  getMultiFactorResolver
 } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { onSnapshot, doc, getDoc, setDoc } from "firebase/firestore";
@@ -23,6 +27,10 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<any>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  sendVerificationEmail: () => Promise<void>;
+  generateTotpSecret: () => Promise<any>;
+  enrollTotp: (secret: any, otpCode: string) => Promise<void>;
+  resolveTotpSignIn: (resolver: any, otpCode: string) => Promise<any>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -118,6 +126,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     },
     signOut: () => firebaseSignOut(auth),
     resetPassword: (email: string) => sendPasswordResetEmail(auth, email),
+    sendVerificationEmail: async () => {
+      if (auth.currentUser) {
+        await sendEmailVerification(auth.currentUser);
+      }
+    },
+    generateTotpSecret: async () => {
+      if (!auth.currentUser) throw new Error("No user logged in");
+      const session = await multiFactor(auth.currentUser).getSession();
+      const secret = await TotpMultiFactorGenerator.generateSecret(session);
+      return secret;
+    },
+    enrollTotp: async (secret: any, otpCode: string) => {
+      if (!auth.currentUser) throw new Error("No user logged in");
+      const assertion = TotpMultiFactorGenerator.assertionForEnrollment(secret, otpCode);
+      await multiFactor(auth.currentUser).enroll(assertion, "Authenticator App");
+    },
+    resolveTotpSignIn: async (resolver: any, otpCode: string) => {
+      const assertion = TotpMultiFactorGenerator.assertionForSignIn(
+        resolver.hints[0].uid,
+        otpCode
+      );
+      return await resolver.resolveSignIn(assertion);
+    },
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

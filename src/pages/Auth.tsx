@@ -12,7 +12,9 @@ import { Footer } from "@/components/layout/Footer";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { Globe } from "lucide-react";
+import { Globe, ShieldCheck, ArrowLeft, X } from "lucide-react";
+import { getMultiFactorResolver } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -30,11 +32,16 @@ const signupSchema = z.object({
 });
 
 const Auth = () => {
-  const { signIn, signUp, signInWithGoogle } = useAuth();
+  const { signIn, signUp, signInWithGoogle, resolveTotpSignIn } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  // MFA State
+  const [showMfaInput, setShowMfaInput] = useState(false);
+  const [mfaResolver, setMfaResolver] = useState<any>(null);
+  const [mfaCode, setMfaCode] = useState("");
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -46,21 +53,42 @@ const Auth = () => {
     defaultValues: { fullName: "", email: "", password: "", confirmPassword: "" },
   });
 
+  const handlePostLogin = async (credential: any) => {
+    const token = await credential.user.getIdTokenResult();
+    toast({ title: "Welcome back!", description: "You have successfully logged in." });
+    if (token.claims.admin) {
+      navigate("/admin");
+    } else {
+      navigate("/dashboard");
+    }
+  };
+
   const onLogin = async (values: z.infer<typeof loginSchema>) => {
     setIsLoading(true);
     try {
       const credential = await signIn(values.email, values.password);
-      const token = await credential.user.getIdTokenResult();
-      
-      toast({ title: "Welcome back!", description: "You have successfully logged in." });
-      
-      if (token.claims.admin) {
-        navigate("/admin");
-      } else {
-        navigate("/dashboard");
-      }
+      await handlePostLogin(credential);
     } catch (error: any) {
-      toast({ title: "Login failed", description: error.message, variant: "destructive" });
+      if (error.code === "auth/multi-factor-auth-required") {
+        setMfaResolver(getMultiFactorResolver(auth, error));
+        setShowMfaInput(true);
+      } else {
+        toast({ title: "Login failed", description: error.message, variant: "destructive" });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleMfaLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (mfaCode.length !== 6) return;
+    setIsLoading(true);
+    try {
+      const credential = await resolveTotpSignIn(mfaResolver, mfaCode);
+      await handlePostLogin(credential);
+    } catch (error: any) {
+      toast({ title: "Verification Failed", description: "The security code is incorrect.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -83,17 +111,12 @@ const Auth = () => {
     setIsGoogleLoading(true);
     try {
       const credential = await signInWithGoogle();
-      const token = await credential.user.getIdTokenResult();
-      
-      toast({ title: "Welcome!", description: "Signed in with Google successfully." });
-      
-      if (token.claims.admin) {
-        navigate("/admin");
-      } else {
-        navigate("/dashboard");
-      }
+      await handlePostLogin(credential);
     } catch (error: any) {
-      if (error.code !== "auth/popup-closed-by-user") {
+      if (error.code === "auth/multi-factor-auth-required") {
+        setMfaResolver(getMultiFactorResolver(auth, error));
+        setShowMfaInput(true);
+      } else if (error.code !== "auth/popup-closed-by-user") {
         toast({ title: "Google Sign-In Failed", description: error.message, variant: "destructive" });
       }
     } finally {
@@ -103,6 +126,57 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-background">
+      {/* MFA Modal */}
+      {showMfaInput && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md px-4">
+          <div className="bg-card-luxury border border-[hsl(43_85%_52%/0.2)] rounded-3xl p-8 max-w-md w-full shadow-glow animate-in zoom-in-95 duration-200">
+            <div className="flex justify-center mb-6">
+              <div className="w-16 h-16 rounded-full bg-gold/10 flex items-center justify-center">
+                <ShieldCheck className="w-10 h-10 text-gold" />
+              </div>
+            </div>
+            
+            <h2 className="text-2xl font-display font-bold text-center mb-2">Two-Step Verification</h2>
+            <p className="text-muted-foreground text-center text-sm mb-8">
+              Enter the 6-digit code from your authenticator app to securely sign in.
+            </p>
+
+            <form onSubmit={handleMfaLogin} className="space-y-6">
+              <div className="space-y-3">
+                <Label htmlFor="mfa-code" className="text-center block">Security Code</Label>
+                <Input 
+                  id="mfa-code"
+                  type="text" 
+                  placeholder="000 000" 
+                  maxLength={6}
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+                  className="text-center tracking-[1em] text-2xl font-mono h-16 bg-[hsl(225_12%_16%/0.3)] border-[hsl(43_85%_52%/0.2)] focus:border-gold"
+                  autoFocus
+                />
+              </div>
+
+              <Button type="submit" className="w-full h-12" variant="gradient" disabled={isLoading || mfaCode.length !== 6}>
+                {isLoading ? "Verifying..." : "CONFIRM & SIGN IN"}
+              </Button>
+
+              <Button 
+                variant="ghost" 
+                className="w-full text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  setShowMfaInput(false);
+                  setMfaCode("");
+                }}
+                disabled={isLoading}
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Login
+              </Button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Left Column - Auth Form */}
       <div className="flex-1 flex flex-col relative z-10 w-full lg:w-1/2">
         <Header />
