@@ -7,17 +7,19 @@ import { useToast } from "@/hooks/use-toast";
 import { Check, TrendingUp, Wallet } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useState, useEffect } from "react";
-import { collection, doc, getDoc, addDoc, updateDoc, increment } from "firebase/firestore";
+import { collection, doc, getDoc, addDoc, updateDoc, increment, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
-const plans = [
-  { id: "starter", name: "Starter",  roi: "3.0%", roiNum: 3.0,  min: 50,     max: 999,     duration: 30,  features: ["Instant Accrual", "Capital Return", "Email Support"] },
-  { id: "bronze",  name: "Bronze",   roi: "4.0%", roiNum: 4.0,  min: 1000,   max: 4999,    duration: 45,  features: ["Instant Accrual", "Capital Return", "Priority Support"] },
-  { id: "silver",  name: "Silver",   roi: "5.5%", roiNum: 5.5,  min: 5000,   max: 9999,    duration: 60,  features: ["Instant Accrual", "Capital Return", "24/7 Support"] },
-  { id: "gold",    name: "Gold",     roi: "7.0%", roiNum: 7.0,  min: 10000,  max: 49999,   duration: 90,  features: ["Instant Accrual", "Capital Return", "Dedicated Manager"] },
-  { id: "diamond", name: "Diamond",  roi: "10.0%",roiNum: 10.0, min: 50000,  max: 99999,   duration: 120, features: ["Instant Accrual", "Capital Return", "VIP Manager"] },
-  { id: "vip",     name: "VIP Elite",roi: "15.0%",roiNum: 15.0, min: 100000, max: Infinity, duration: 180, features: ["Instant Accrual", "Capital Return", "Personal Advisor"] },
-];
+interface Plan {
+  id: string;
+  name: string;
+  roi: string;
+  roiNum: number;
+  min: number;
+  max: number | null;
+  duration: number;
+  features: string[];
+}
 
 const Invest = () => {
   const { user } = useAuth();
@@ -25,17 +27,34 @@ const Invest = () => {
   const [wallet, setWallet] = useState<any>(null);
   const [isInvesting, setIsInvesting] = useState<string | null>(null);
   const [amounts, setAmounts] = useState<Record<string, string>>({});
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchWallet = async () => {
+    const fetchWalletAndPlans = async () => {
       if (!user) return;
+      
+      // Fetch wallet
       const walletSnap = await getDoc(doc(db, "wallets", user.uid));
       if (walletSnap.exists()) setWallet(walletSnap.data());
+
+      // Fetch plans
+      try {
+        const plansSnap = await getDocs(collection(db, "plans"));
+        const fetchedPlans = plansSnap.docs.map(d => ({ id: d.id, ...d.data() } as Plan));
+        // Sort by min amount
+        fetchedPlans.sort((a, b) => a.min - b.min);
+        setPlans(fetchedPlans);
+      } catch (err) {
+        console.error("Failed to load plans", err);
+      } finally {
+        setLoading(false);
+      }
     };
-    fetchWallet();
+    fetchWalletAndPlans();
   }, [user]);
 
-  const handleInvest = async (plan: typeof plans[0]) => {
+  const handleInvest = async (plan: Plan) => {
     if (!user || !wallet) return;
 
     const rawAmount = amounts[plan.id];
@@ -45,7 +64,7 @@ const Invest = () => {
       toast({ title: "Invalid Amount", description: `Minimum investment for ${plan.name} is $${plan.min.toLocaleString()}.`, variant: "destructive" });
       return;
     }
-    if (plan.max !== Infinity && investAmount > plan.max) {
+    if (plan.max !== null && investAmount > plan.max) {
       toast({ title: "Amount Too High", description: `Maximum investment for ${plan.name} is $${plan.max.toLocaleString()}.`, variant: "destructive" });
       return;
     }
@@ -146,7 +165,7 @@ const Invest = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Max. Investment</span>
-                    <span className="font-semibold">{plan.max === Infinity ? "Unlimited" : `$${plan.max.toLocaleString()}`}</span>
+                    <span className="font-semibold">{plan.max === null ? "Unlimited" : `$${plan.max.toLocaleString()}`}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Duration</span>
@@ -166,7 +185,7 @@ const Invest = () => {
                       value={amounts[plan.id] || ""}
                       onChange={(e) => setAmounts({ ...amounts, [plan.id]: e.target.value })}
                       min={plan.min}
-                      max={plan.max === Infinity ? undefined : plan.max}
+                      max={plan.max === null ? undefined : plan.max}
                     />
                   </div>
                 </div>

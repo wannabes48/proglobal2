@@ -21,7 +21,7 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 export const AdminRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, profile, loading } = useAuth();
+  const { user, isAdmin, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -32,7 +32,7 @@ export const AdminRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  if (!user || profile?.role !== "admin") {
+  if (!user || !isAdmin) {
     return <Navigate to="/dashboard" replace />;
   }
 

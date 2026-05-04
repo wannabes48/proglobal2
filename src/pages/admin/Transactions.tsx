@@ -54,14 +54,14 @@ const ManageTransactions = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <Card className="bg-card/30 border-border overflow-hidden">
-          <CardHeader>
-            <CardTitle>All Transactions</CardTitle>
+        <Card className="bg-card/30 border-[hsl(43_85%_52%/0.15)] overflow-hidden">
+          <CardHeader className="bg-[hsl(43_85%_52%/0.02)] border-b border-[hsl(43_85%_52%/0.1)]">
+            <CardTitle className="text-gold">All Transactions</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
-                <thead className="text-xs uppercase bg-muted/50 text-muted-foreground">
+                <thead className="text-xs uppercase bg-[hsl(43_85%_52%/0.05)] text-gold border-b border-[hsl(43_85%_52%/0.1)]">
                   <tr>
                     <th className="px-6 py-4">Transaction</th>
                     <th className="px-6 py-4">User ID</th>
@@ -70,27 +70,27 @@ const ManageTransactions = () => {
                     <th className="px-6 py-4">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody className="divide-y divide-[hsl(43_85%_52%/0.1)]">
                   {transactions.map((tx) => (
-                    <tr key={tx.id} className="hover:bg-muted/30 transition-colors">
+                    <tr key={tx.id} className="hover:bg-[hsl(43_85%_52%/0.05)] transition-colors">
                       <td className="px-6 py-4 flex items-center gap-2">
-                        {tx.type === "deposit" ? <ArrowDownCircle className="text-green-500 w-4 h-4" /> : <ArrowUpCircle className="text-destructive w-4 h-4" />}
-                        <span className="capitalize font-bold">{tx.type}</span>
+                        {tx.type === "deposit" ? <ArrowDownCircle className="text-emerald-400 w-4 h-4" /> : <ArrowUpCircle className="text-destructive w-4 h-4" />}
+                        <span className="capitalize font-bold text-foreground">{tx.type}</span>
                       </td>
                       <td className="px-6 py-4 text-xs font-mono text-muted-foreground">
                         {tx.user_id.substring(0, 12)}...
                       </td>
-                      <td className="px-6 py-4 font-semibold">${tx.amount.toLocaleString()}</td>
+                      <td className="px-6 py-4 font-semibold text-foreground">${tx.amount.toLocaleString()}</td>
                       <td className="px-6 py-4">
                         <Badge variant={tx.status === "completed" ? "outline" : tx.status === "pending" ? "outline" : "destructive"}
-                          className={tx.status === "pending" ? "bg-gradient-gold text-[hsl(225_20%_6%)] border-none" : ""}>
+                          className={tx.status === "pending" ? "bg-gradient-gold text-[hsl(225_20%_6%)] border-none font-bold" : "border-[hsl(43_85%_52%/0.2)] text-foreground"}>
                           {tx.status.toUpperCase()}
                         </Badge>
                       </td>
                       <td className="px-6 py-4">
                         {tx.status === "pending" && (
                           <div className="flex gap-2">
-                            <Button size="sm" className="bg-green-500 hover:bg-green-600 text-white" onClick={() => handleAction(tx, "completed")}>
+                            <Button size="sm" className="bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => handleAction(tx, "completed")}>
                               <Check className="w-4 h-4" />
                             </Button>
                             <Button size="sm" variant="destructive" onClick={() => handleAction(tx, "failed")}>

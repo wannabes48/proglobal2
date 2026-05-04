@@ -22,6 +22,8 @@ import AdminDashboard from "./pages/admin/Dashboard"
 import ManageUsers from "./pages/admin/Users"
 import KYCApprovals from "./pages/admin/KYC"
 import AdminTransactions from "./pages/admin/Transactions"
+import ManagePlans from "./pages/admin/Plans"
+import Settings from "./pages/admin/Settings"
 import PrivacyPolicy from "./pages/legal/PrivacyPolicy"
 import TermsOfService from "./pages/legal/TermsOfService"
 import RiskDisclosure from "./pages/legal/RiskDisclosure"
@@ -111,9 +113,20 @@ function App() {
             <KYCApprovals />
           </AdminRoute>
         } />
+
         <Route path="/admin/transactions" element={
           <AdminRoute>
             <AdminTransactions />
+          </AdminRoute>
+        } />
+        <Route path="/admin/plans" element={
+          <AdminRoute>
+            <ManagePlans />
+          </AdminRoute>
+        } />
+        <Route path="/admin/settings" element={
+          <AdminRoute>
+            <Settings />
           </AdminRoute>
         } />
 

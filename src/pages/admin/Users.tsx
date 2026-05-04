@@ -17,22 +17,40 @@ const ManageUsers = () => {
 
   useEffect(() => {
     const fetchUsers = async () => {
-      const snap = await getDocs(collection(db, "profiles"));
-      setUsers(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      setLoading(false);
+      try {
+        const [profilesSnap, walletsSnap] = await Promise.all([
+          getDocs(collection(db, "profiles")),
+          getDocs(collection(db, "wallets"))
+        ]);
+
+        const walletsData = walletsSnap.docs.reduce((acc: any, doc) => {
+          acc[doc.id] = doc.data();
+          return acc;
+        }, {});
+
+        const combinedUsers = profilesSnap.docs.map(doc => {
+          const profile = doc.data();
+          const wallet = walletsData[doc.id] || { balance: 0, total_deposited: 0, total_withdrawn: 0 };
+          return { id: doc.id, ...profile, wallet };
+        });
+
+        setUsers(combinedUsers);
+      } catch (error: any) {
+        console.error("Failed to fetch users:", error);
+        toast({ title: "Fetch Error", description: error.message, variant: "destructive" });
+      } finally {
+        setLoading(false);
+      }
     };
     fetchUsers();
   }, []);
 
   const handleRoleToggle = async (userId: string, currentRole: string) => {
-    const newRole = currentRole === "admin" ? "user" : "admin";
-    try {
-      await updateDoc(doc(db, "profiles", userId), { role: newRole });
-      setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
-      toast({ title: "Role Updated", description: `User is now an ${newRole}.` });
-    } catch (error: any) {
-      toast({ title: "Update Failed", description: error.message, variant: "destructive" });
-    }
+    toast({ 
+      title: "Action Disabled", 
+      description: "Admin roles are now strictly managed via Firebase Custom Claims and can only be assigned via the secure Node.js backend. Please use the set-admin.js script.", 
+      variant: "destructive" 
+    });
   };
 
   const filteredUsers = users.filter(u => 
@@ -54,33 +72,35 @@ const ManageUsers = () => {
             />
           </div>
           <div className="flex gap-2">
-            <Button variant="outline">Export CSV</Button>
-            <Button variant="accent" className="text-white">Add New User</Button>
+            <Button variant="outline" className="border-[hsl(43_85%_52%/0.2)] hover:bg-gold/10 hover:text-gold">Export CSV</Button>
+            <Button className="bg-gold text-[hsl(225_20%_6%)] hover:bg-gold/80 font-bold">Add New User</Button>
           </div>
         </div>
 
-        <Card className="bg-card/30 border-border overflow-hidden">
-          <CardHeader>
-            <CardTitle>Platform Users</CardTitle>
+        <Card className="bg-card/30 border-[hsl(43_85%_52%/0.15)] overflow-hidden">
+          <CardHeader className="bg-[hsl(43_85%_52%/0.02)] border-b border-[hsl(43_85%_52%/0.1)]">
+            <CardTitle className="text-gold">Platform Users</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
-                <thead className="text-xs uppercase bg-muted/50 text-muted-foreground">
+                <thead className="text-xs uppercase bg-[hsl(43_85%_52%/0.05)] text-gold border-b border-[hsl(43_85%_52%/0.1)]">
                   <tr>
                     <th className="px-6 py-4">User</th>
-                    <th className="px-6 py-4">Role</th>
-                    <th className="px-6 py-4">KYC Status</th>
+                    <th className="px-6 py-4">Balance</th>
+                    <th className="px-6 py-4">Deposited</th>
+                    <th className="px-6 py-4">Withdrawn</th>
+                    <th className="px-6 py-4">KYC</th>
                     <th className="px-6 py-4">Joined</th>
                     <th className="px-6 py-4">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody className="divide-y divide-[hsl(43_85%_52%/0.1)]">
                   {filteredUsers.map((u) => (
-                    <tr key={u.id} className="hover:bg-muted/30 transition-colors">
+                    <tr key={u.id} className="hover:bg-[hsl(43_85%_52%/0.05)] transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-xs">
+                          <div className="w-8 h-8 rounded-full bg-gradient-gold flex items-center justify-center font-bold text-xs text-[hsl(225_20%_6%)] shadow-[0_0_10px_rgba(234,179,8,0.2)]">
                             {u.full_name?.[0].toUpperCase()}
                           </div>
                           <div>
@@ -89,19 +109,23 @@ const ManageUsers = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <Badge variant="outline" className={u.role === "admin" ? "bg-gradient-gold text-[hsl(225_20%_6%)] border-none" : ""}>
-                          {u.role?.toUpperCase() || "USER"}
-                        </Badge>
+                      <td className="px-6 py-4 font-bold text-gold">
+                        ${(u.wallet?.balance || 0).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 text-emerald-400 font-semibold">
+                        ${(u.wallet?.total_deposited || 0).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 text-destructive font-semibold">
+                        ${(u.wallet?.total_withdrawn || 0).toLocaleString()}
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`text-xs font-bold ${
-                          u.kyc_status === "verified" ? "text-green-500" : "text-orange-500"
+                        <span className={`text-[10px] uppercase tracking-widest font-bold px-2 py-1 rounded-md border ${
+                          u.kyc_status === "verified" ? "border-emerald-500/30 text-emerald-500 bg-emerald-500/10" : "border-orange-500/30 text-orange-500 bg-orange-500/10"
                         }`}>
                           {u.kyc_status?.toUpperCase() || "PENDING"}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-muted-foreground">
+                      <td className="px-6 py-4 text-xs text-muted-foreground">
                         {u.created_at ? new Date(u.created_at).toLocaleDateString() : "N/A"}
                       </td>
                       <td className="px-6 py-4">
@@ -113,9 +137,6 @@ const ManageUsers = () => {
                             onClick={() => handleRoleToggle(u.id, u.role)}
                           >
                             <UserCog className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10">
-                            <LogOut className="w-4 h-4" />
                           </Button>
                         </div>
                       </td>

@@ -7,24 +7,41 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Copy, QrCode, ArrowRight, CheckCircle2 } from "lucide-react";
-import { useState } from "react";
-import { addDoc, collection, updateDoc, doc, increment } from "firebase/firestore";
+import { useState, useEffect } from "react";
+import { addDoc, collection, updateDoc, doc, increment, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
-const cryptoAddresses = [
-  { coin: "Bitcoin",  symbol: "BTC",  address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh", network: "BTC (Bitcoin Network)"   },
-  { coin: "Ethereum", symbol: "ETH",  address: "0x71C7656EC7ab88b098defB751B7401B5f6d8976F", network: "ETH (ERC-20)"            },
-  { coin: "Tether",   symbol: "USDT", address: "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",       network: "USDT (TRC-20 / Tron)"  },
+const fallbackAddresses = [
+  { coin: "Bitcoin",  symbol: "BTC",  address: "Loading...", network: "..."   },
+  { coin: "Ethereum", symbol: "ETH",  address: "Loading...", network: "..."            },
+  { coin: "Tether",   symbol: "USDT", address: "Loading...",       network: "..."  },
 ];
 
 const Deposit = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [selectedCoin, setSelectedCoin] = useState(cryptoAddresses[0]);
+  const [cryptoAddresses, setCryptoAddresses] = useState(fallbackAddresses);
+  const [selectedCoin, setSelectedCoin] = useState(fallbackAddresses[0]);
   const [txid, setTxid] = useState("");
   const [amount, setAmount] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    const fetchAddresses = async () => {
+      try {
+        const snap = await getDoc(doc(db, "settings", "wallets"));
+        if (snap.exists() && snap.data().addresses) {
+          const fetched = snap.data().addresses;
+          setCryptoAddresses(fetched);
+          setSelectedCoin(fetched[0]);
+        }
+      } catch (err) {
+        console.error("Failed to fetch deposit addresses", err);
+      }
+    };
+    fetchAddresses();
+  }, []);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -55,11 +72,6 @@ const Deposit = () => {
         network: selectedCoin.network,
         status: "pending",
         timestamp: new Date().toISOString(),
-      });
-
-      // Optimistically credit the wallet (admin will confirm)
-      await updateDoc(doc(db, "wallets", user.uid), {
-        total_deposited: increment(parseFloat(amount)),
       });
 
       setSubmitted(true);

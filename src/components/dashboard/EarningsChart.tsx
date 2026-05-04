@@ -31,11 +31,11 @@ export const EarningsChart = () => {
             <AreaChart data={data}>
               <defs>
                 <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                  <stop offset="5%" stopColor="hsl(43 85% 52%)" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="hsl(43 85% 52%)" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis 
                 dataKey="name" 
                 axisLine={false} 
@@ -51,17 +51,18 @@ export const EarningsChart = () => {
               />
               <Tooltip 
                 contentStyle={{ 
-                  backgroundColor: "hsl(var(--card))", 
-                  borderColor: "hsl(var(--border))",
+                  backgroundColor: "hsl(225 18% 10% / 0.9)", 
+                  borderColor: "hsl(43 85% 52% / 0.2)",
                   borderRadius: "var(--radius)",
-                  color: "hsl(var(--foreground))"
+                  color: "hsl(var(--foreground))",
+                  backdropFilter: "blur(8px)"
                 }}
-                itemStyle={{ color: "hsl(var(--primary))" }}
+                itemStyle={{ color: "hsl(43 85% 52%)", fontWeight: "bold" }}
               />
               <Area 
                 type="monotone" 
                 dataKey="amount" 
-                stroke="hsl(var(--primary))" 
+                stroke="hsl(43 85% 52%)" 
                 strokeWidth={3}
                 fillOpacity={1} 
                 fill="url(#colorAmount)" 

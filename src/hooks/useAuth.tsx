@@ -16,8 +16,9 @@ import { onSnapshot, doc, getDoc, setDoc } from "firebase/firestore";
 interface AuthContextType {
   user: User | null;
   profile: any | null;
+  isAdmin: boolean;
   loading: boolean;
-  signIn: typeof signInWithEmailAndPassword;
+  signIn: (email: string, password: string) => Promise<any>;
   signUp: (email: string, password: string, fullName: string) => Promise<any>;
   signInWithGoogle: () => Promise<any>;
   signOut: () => Promise<void>;
@@ -29,26 +30,37 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<any | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let profileUnsubscribe: (() => void) | undefined;
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
       if (user) {
+        // Prevent protected routes from evaluating before claims and profile are loaded
+        setLoading(true);
+        setUser(user);
+        
+        // Securely check for admin custom claim
+        const idTokenResult = await user.getIdTokenResult();
+        setIsAdmin(!!idTokenResult.claims.admin);
+
         // Listen to user profile from Firestore in real-time
         const docRef = doc(db, "profiles", user.uid);
         profileUnsubscribe = onSnapshot(docRef, (docSnap) => {
           if (docSnap.exists()) {
             setProfile(docSnap.data());
           }
+          setLoading(false); // Finish loading after profile is fetched
         });
       } else {
+        setUser(null);
         setProfile(null);
+        setIsAdmin(false);
+        setLoading(false);
         if (profileUnsubscribe) profileUnsubscribe();
       }
-      setLoading(false);
     });
 
     return () => {
@@ -86,6 +98,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const value = {
     user,
     profile,
+    isAdmin,
     loading,
     signIn: (email: string, password: string) => signInWithEmailAndPassword(auth, email, password),
     signUp: async (email: string, password: string, fullName: string) => {
