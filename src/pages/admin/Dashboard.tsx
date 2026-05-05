@@ -5,12 +5,16 @@ import {
   DollarSign, 
   ArrowUpCircle, 
   TrendingUp,
-  ShieldAlert
+  ShieldAlert,
+  Activity
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, orderBy, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
+import { InvestmentDetailModal } from "@/components/dashboard/InvestmentDetailModal";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { 
   BarChart, 
   Bar, 
@@ -20,6 +24,7 @@ import {
   Tooltip, 
   ResponsiveContainer 
 } from "recharts";
+import { ArrowDownCircle, ArrowUpRight, Search, Eye } from "lucide-react";
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
@@ -30,6 +35,10 @@ const AdminDashboard = () => {
     pendingKYC: 0,
     pendingWithdrawals: 0
   });
+  const [recentInvestments, setRecentInvestments] = useState<any[]>([]);
+  const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
+  const [selectedEntity, setSelectedEntity] = useState<any | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [_loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -40,6 +49,23 @@ const AdminDashboard = () => {
         const transSnap = await getDocs(collection(db, "transactions"));
         const invSnap = await getDocs(query(collection(db, "investments"), where("status", "==", "active")));
         const kycSnap = await getDocs(query(collection(db, "profiles"), where("kyc_status", "==", "pending")));
+        
+        // Detailed data for tables
+        const now = new Date();
+        const investments = invSnap.docs.map(doc => {
+          const data = doc.data();
+          const startDate = new Date(data.start_date);
+          const elapsedMs = now.getTime() - startDate.getTime();
+          const durationMs = data.duration_days * 24 * 60 * 60 * 1000;
+          const progress = Math.min(100, Math.floor((elapsedMs / durationMs) * 100));
+          const elapsedDays = elapsedMs / (24 * 60 * 60 * 1000);
+          const totalEarned = (data.amount * (data.roi_percentage / 100) * elapsedDays).toFixed(2);
+          
+          return { id: doc.id, ...data, progress: progress || 0, total_earned: totalEarned };
+        });
+
+        const recentTxSnap = await getDocs(query(collection(db, "transactions"), orderBy("timestamp", "desc"), limit(10)));
+        const recentTx = recentTxSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
         const deposits = transSnap.docs
           .filter(d => d.data().type === "deposit" && d.data().status === "completed")
@@ -52,6 +78,8 @@ const AdminDashboard = () => {
         const pendingWithdrawalsCount = transSnap.docs
           .filter(d => d.data().type === "withdrawal" && d.data().status === "pending").length;
 
+        setRecentInvestments(investments);
+        setRecentTransactions(recentTx);
         setStats({
           totalUsers: usersSnap.size,
           totalDeposits: deposits,
@@ -170,7 +198,125 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
         </div>
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* Live Investments Table */}
+          <Card className="bg-card-luxury border-none shadow-elegant overflow-hidden">
+            <CardHeader className="border-b border-[hsl(43_85%_52%/0.1)] bg-[hsl(225_20%_6%/0.4)] flex flex-row items-center justify-between">
+              <CardTitle className="text-gold flex items-center gap-2">
+                <TrendingUp className="w-5 h-5" />
+                Live Active Investments
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="text-[10px] uppercase bg-black/20 text-muted-foreground border-b border-white/5">
+                    <tr>
+                      <th className="px-6 py-4">Contract</th>
+                      <th className="px-6 py-4 text-center">Progress</th>
+                      <th className="px-6 py-4 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {recentInvestments.slice(0, 5).map((inv) => (
+                      <tr key={inv.id} className="hover:bg-gold/5 transition-colors group">
+                        <td className="px-6 py-4">
+                          <p className="font-bold text-white uppercase text-xs">{inv.plan_name}</p>
+                          <p className="text-[9px] text-muted-foreground font-mono mt-1">${inv.amount.toLocaleString()} • {inv.user_id.slice(0, 8)}...</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
+                              <div className="h-full bg-gold" style={{ width: `${inv.progress}%` }} />
+                            </div>
+                            <span className="text-[9px] font-bold text-gold">{inv.progress}%</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-7 w-7 p-0 rounded-full hover:bg-gold hover:text-black transition-colors"
+                            onClick={() => {
+                              setSelectedEntity(inv);
+                              setIsModalOpen(true);
+                            }}
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Recent Transactions Table */}
+          <Card className="bg-card-luxury border-none shadow-elegant overflow-hidden">
+            <CardHeader className="border-b border-[hsl(43_85%_52%/0.1)] bg-[hsl(225_20%_6%/0.4)] flex flex-row items-center justify-between">
+              <CardTitle className="text-gold flex items-center gap-2">
+                <Activity className="w-5 h-5 text-gold" />
+                Recent System Activity
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="text-[10px] uppercase bg-black/20 text-muted-foreground border-b border-white/5">
+                    <tr>
+                      <th className="px-6 py-4">Type</th>
+                      <th className="px-6 py-4 text-center">Amount</th>
+                      <th className="px-6 py-4 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {recentTransactions.slice(0, 5).map((tx) => (
+                      <tr key={tx.id} className="hover:bg-white/5 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            {tx.type === "deposit" ? (
+                              <ArrowDownCircle className="w-3.5 h-3.5 text-emerald-400" />
+                            ) : (
+                              <ArrowUpRight className="w-3.5 h-3.5 text-destructive" />
+                            )}
+                            <span className="font-bold text-white capitalize text-xs">{tx.type}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-center font-bold text-white text-xs">
+                          ${tx.amount?.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <Badge 
+                            variant="outline" 
+                            className={`text-[9px] font-bold ${
+                              tx.status === "completed" ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/5" :
+                              tx.status === "pending" ? "border-gold/30 text-gold bg-gold/5" :
+                              "border-destructive/30 text-destructive bg-destructive/5"
+                            }`}
+                          >
+                            {tx.status.toUpperCase()}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
+
+      <InvestmentDetailModal 
+        investment={selectedEntity}
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedEntity(null);
+        }}
+      />
     </AdminLayout>
   );
 };
