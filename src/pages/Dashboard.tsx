@@ -2,10 +2,15 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { WalletCard } from "@/components/dashboard/WalletCard";
 import { ActiveInvestments } from "@/components/dashboard/ActiveInvestments";
 import { EarningsChart } from "@/components/dashboard/EarningsChart";
+import { AllocationChart } from "@/components/dashboard/AllocationChart";
+import { WatchlistWidget } from "@/components/dashboard/WatchlistWidget";
+import { InvestmentDetailModal } from "@/components/dashboard/InvestmentDetailModal";
+import { Card } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { TrendingUp, Globe, Activity, Zap } from "lucide-react";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -13,6 +18,8 @@ const Dashboard = () => {
   const [investments, setInvestments] = useState<any[]>([]);
   const [totalLiveEarnings, setTotalLiveEarnings] = useState(0);
   const [chartData, setChartData] = useState<any[]>([]);
+  const [selectedInvestment, setSelectedInvestment] = useState<any | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -98,21 +105,81 @@ const Dashboard = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
-        <div className="grid lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-8">
+      <div className="space-y-8 animate-in fade-in duration-700">
+        {/* Top Header Section */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-display font-bold text-white flex items-center gap-3">
+              <Activity className="w-8 h-8 text-gold" />
+              Intelligence Dashboard
+            </h1>
+            <p className="text-muted-foreground mt-1">Real-time performance monitoring and market analytics.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-xl bg-gold/5 border border-gold/10">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">System Online</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Main Content Area (Left 8 Columns) */}
+          <div className="lg:col-span-8 space-y-8">
             <WalletCard 
               balance={wallet?.balance || 0} 
               totalEarned={(wallet?.total_earned || 0) + totalLiveEarnings} 
             />
-            <EarningsChart data={chartData} />
+            
+            <div className="grid md:grid-cols-2 gap-8">
+              <EarningsChart data={chartData} />
+              <AllocationChart investments={investments} />
+            </div>
+
+            {/* Market Pulse (Desktop Only) */}
+            <Card className="bg-card-luxury border-gold/10 h-[400px] overflow-hidden hidden md:block">
+              <div className="p-4 border-b border-gold/5 flex items-center justify-between bg-black/20">
+                <div className="flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-gold" />
+                  <span className="text-xs font-bold text-gold uppercase tracking-widest">Global Market Watchlist</span>
+                </div>
+                <TrendingUp className="w-4 h-4 text-gold opacity-50" />
+              </div>
+              <div className="h-full">
+                <WatchlistWidget />
+              </div>
+            </Card>
           </div>
-          <div className="space-y-8">
-            <ActiveInvestments investments={investments} />
-            {/* Quick Actions or Referral Widget could go here */}
+
+          {/* Sidebar Area (Right 4 Columns) */}
+          <div className="lg:col-span-4 space-y-8">
+            <ActiveInvestments 
+              investments={investments} 
+              onInvestmentClick={(inv) => {
+                setSelectedInvestment(inv);
+                setIsModalOpen(true);
+              }}
+            />
+            
+            {/* Quick Stats or News could go here */}
+            <Card className="bg-gradient-to-br from-[hsl(43_85%_52%/0.1)] to-transparent border-gold/10 p-6">
+              <h4 className="text-gold font-bold mb-2 flex items-center gap-2">
+                <Zap className="w-4 h-4" />
+                Pro Tip
+              </h4>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Diversifying your capital across different plan durations (Starter, Gold, Platinum) can optimize your daily ROI while maintaining liquidity.
+              </p>
+            </Card>
           </div>
         </div>
       </div>
+
+      <InvestmentDetailModal 
+        investment={selectedInvestment}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
     </DashboardLayout>
   );
 };
