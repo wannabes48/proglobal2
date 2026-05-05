@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Wallet, ArrowUpCircle, Activity, Clock, ShieldCheck } from "lucide-react";
+import { Wallet, ArrowUpCircle, Activity, Clock, ShieldCheck, CheckCircle2, XCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { doc, getDoc, addDoc, collection, updateDoc, increment, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc, addDoc, collection, updateDoc, increment, query, where, getDocs, orderBy, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 const Withdraw = () => {
@@ -17,26 +17,27 @@ const Withdraw = () => {
   const [amount, setAmount] = useState("");
   const [address, setAddress] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [pendingWithdrawal, setPendingWithdrawal] = useState<any>(null);
+  const [lastWithdrawal, setLastWithdrawal] = useState<any>(null);
+  const [showStatus, setShowStatus] = useState(true);
   const [_loading, setLoading] = useState(true);
 
-  const fetchWalletAndPending = async () => {
+  const fetchWalletAndLastWithdrawal = async () => {
     if (!user) return;
     try {
       const walletSnap = await getDoc(doc(db, "wallets", user.uid));
       if (walletSnap.exists()) setWallet(walletSnap.data());
 
+      // Fetch the absolute last withdrawal to show status
       const q = query(
         collection(db, "transactions"),
         where("user_id", "==", user.uid),
         where("type", "==", "withdrawal"),
-        where("status", "==", "pending")
+        orderBy("timestamp", "desc"),
+        limit(1)
       );
       const txSnap = await getDocs(q);
       if (!txSnap.empty) {
-        setPendingWithdrawal({ id: txSnap.docs[0].id, ...txSnap.docs[0].data() });
-      } else {
-        setPendingWithdrawal(null);
+        setLastWithdrawal({ id: txSnap.docs[0].id, ...txSnap.docs[0].data() });
       }
     } catch (err) {
       console.error("Fetch error:", err);
@@ -46,7 +47,7 @@ const Withdraw = () => {
   };
 
   useEffect(() => {
-    fetchWalletAndPending();
+    fetchWalletAndLastWithdrawal();
   }, [user]);
 
   const handleWithdraw = async (e: React.FormEvent) => {
@@ -71,7 +72,6 @@ const Withdraw = () => {
 
     setIsSubmitting(true);
     try {
-      // 1. Create withdrawal request (pending)
       await addDoc(collection(db, "transactions"), {
         user_id: user.uid,
         type: "withdrawal",
@@ -82,7 +82,6 @@ const Withdraw = () => {
         timestamp: new Date().toISOString(),
       });
 
-      // 2. Lock balance (deduct from wallet)
       await updateDoc(doc(db, "wallets", user.uid), {
         balance: increment(-withdrawAmount),
         total_withdrawn: increment(withdrawAmount)
@@ -95,12 +94,17 @@ const Withdraw = () => {
       
       setAmount("");
       setAddress("");
-      fetchWalletAndPending();
+      setShowStatus(true);
+      fetchWalletAndLastWithdrawal();
     } catch (error: any) {
       toast({ title: "Withdrawal Failed", description: error.message, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleDismissStatus = () => {
+    setShowStatus(false);
   };
 
   return (
@@ -122,41 +126,68 @@ const Withdraw = () => {
           </CardHeader>
           
           <CardContent className="relative z-10">
-            {pendingWithdrawal ? (
-              <div className="p-8 text-center space-y-6 bg-gold/5 rounded-3xl border border-gold/20 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                  <Activity className="w-24 h-24 text-gold" />
-                </div>
-                
-                <div className="w-16 h-16 rounded-2xl bg-gold/10 flex items-center justify-center mx-auto shadow-inner">
-                  <Clock className="w-8 h-8 text-gold animate-pulse" />
-                </div>
-                
-                <div className="space-y-2">
-                  <h3 className="text-xl font-bold text-white">Withdrawal in Progress</h3>
-                  <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                    Your request for <span className="text-gold font-bold">${pendingWithdrawal.amount}</span> is currently being verified by our security team.
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-xl bg-black/40 border border-white/5 space-y-3">
-                  <div className="flex justify-between text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
-                    <span>Est. Processing Time</span>
-                    <span className="text-gold">~48 Hours</span>
+            {lastWithdrawal && showStatus && (
+              <div className="space-y-6">
+                {lastWithdrawal.status === "pending" ? (
+                  <div className="p-8 text-center space-y-6 bg-gold/5 rounded-3xl border border-gold/20 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                      <Activity className="w-24 h-24 text-gold" />
+                    </div>
+                    <div className="w-16 h-16 rounded-2xl bg-gold/10 flex items-center justify-center mx-auto shadow-inner">
+                      <Clock className="w-8 h-8 text-gold animate-pulse" />
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="text-xl font-bold text-white">Withdrawal Pending</h3>
+                      <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                        Your request for <span className="text-gold font-bold">${lastWithdrawal.amount}</span> is currently being verified.
+                      </p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-black/40 border border-white/5 space-y-3">
+                      <div className="flex justify-between text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
+                        <span>Est. Processing Time</span>
+                        <span className="text-gold">~48 Hours</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-gold" style={{ width: '45%' }} />
+                      </div>
+                    </div>
                   </div>
-                  <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-gold" style={{ width: '45%' }} />
+                ) : lastWithdrawal.status === "completed" ? (
+                  <div className="p-8 text-center space-y-6 bg-emerald-500/5 rounded-3xl border border-emerald-500/20 relative overflow-hidden">
+                    <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center mx-auto shadow-inner">
+                      <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="text-xl font-bold text-white">Withdrawal Successful!</h3>
+                      <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                        Your withdrawal of <span className="text-emerald-400 font-bold">${lastWithdrawal.amount}</span> has been processed and sent to your wallet.
+                      </p>
+                    </div>
+                    <Button onClick={handleDismissStatus} variant="outline" className="w-full border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 font-bold">
+                      Got it
+                    </Button>
                   </div>
-                </div>
-
-                <div className="flex items-center justify-center gap-2 text-[10px] text-emerald-400 font-bold uppercase tracking-tighter bg-emerald-500/10 py-2 rounded-lg border border-emerald-500/20">
+                ) : (
+                  <div className="p-8 text-center space-y-6 bg-destructive/5 rounded-3xl border border-destructive/20 relative overflow-hidden">
+                    <div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center mx-auto shadow-inner">
+                      <XCircle className="w-8 h-8 text-destructive" />
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="text-xl font-bold text-white">Withdrawal Rejected</h3>
+                      <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                        Your request for <span className="text-destructive font-bold">${lastWithdrawal.amount}</span> was declined by our security team.
+                      </p>
+                    </div>
+                    <Button onClick={handleDismissStatus} variant="outline" className="w-full border-destructive/30 text-destructive hover:bg-destructive/10 font-bold">
+                      Dismiss
+                    </Button>
+                  </div>
+                )}
+                
+                <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground font-bold uppercase tracking-widest py-2">
                   <ShieldCheck className="w-3 h-3" />
                   Secured by ProGlobal Trust
                 </div>
-                
-                <p className="text-[10px] text-muted-foreground italic">
-                  Transaction ID: {pendingWithdrawal.id.toUpperCase()}
-                </p>
               </div>
             ) : profile?.kyc_status !== "verified" ? (
               <div className="p-6 text-center space-y-4 bg-orange-500/10 rounded-2xl border border-orange-500/20">
