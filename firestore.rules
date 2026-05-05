@@ -24,7 +24,7 @@ service cloud.firestore {
     match /wallets/{userId} {
       allow read: if isSignedIn() && (isOwner(userId) || isAdmin());
       allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isAdmin(); // Only admins can directly update wallets, or through specific functions
+      allow update: if isSignedIn() && (isOwner(userId) || isAdmin());
       allow delete: if isAdmin();
     }
 
