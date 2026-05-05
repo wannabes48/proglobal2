@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { doc, getDoc, addDoc, collection, updateDoc, increment, query, where, getDocs, orderBy, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { createNotification } from "@/lib/notifications";
 
 const Withdraw = () => {
   const { user, profile } = useAuth();
@@ -80,6 +81,13 @@ const Withdraw = () => {
         status: "pending",
         timestamp: new Date().toISOString(),
       });
+
+      await createNotification(
+        user.uid,
+        "Withdrawal Requested",
+        `Your request for $${withdrawAmount} has been received and is under review.`,
+        "transaction"
+      );
 
       await updateDoc(doc(db, "wallets", user.uid), {
         balance: increment(-withdrawAmount),

@@ -14,11 +14,15 @@ import {
   Menu, 
   X,
   Globe,
-  BarChart3
+  BarChart3,
+  Bell
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useEffect as useReactEffect } from "react";
 
 const menuItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
@@ -27,6 +31,7 @@ const menuItems = [
   { label: "Deposit", icon: ArrowDownCircle, href: "/dashboard/deposit" },
   { label: "Withdraw", icon: ArrowUpCircle, href: "/dashboard/withdraw" },
   { label: "Transactions", icon: History, href: "/dashboard/transactions" },
+  { label: "Notifications", icon: Bell, href: "/dashboard/notifications" },
   { label: "Referrals", icon: Users, href: "/dashboard/referrals" },
   { label: "KYC Verification", icon: ShieldCheck, href: "/dashboard/kyc" },
   { label: "Profile", icon: UserCircle, href: "/dashboard/profile" },
@@ -38,6 +43,20 @@ export const DashboardLayout = ({ children }: { children: React.ReactNode }) => 
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useReactEffect(() => {
+    if (!user) return;
+    const q = query(
+      collection(db, "notifications"),
+      where("user_id", "==", user.uid),
+      where("read", "==", false)
+    );
+    const unsubscribe = onSnapshot(q, (snap) => {
+      setUnreadCount(snap.size);
+    });
+    return () => unsubscribe();
+  }, [user]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -133,6 +152,20 @@ export const DashboardLayout = ({ children }: { children: React.ReactNode }) => 
           </div>
 
           <div className="flex items-center gap-4">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="relative hover:bg-gold/10 hover:text-gold"
+              onClick={() => navigate("/dashboard/notifications")}
+            >
+              <Bell className="w-5 h-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-gold text-[hsl(225_20%_6%)] text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse shadow-[0_0_10px_rgba(234,179,8,0.5)]">
+                  {unreadCount}
+                </span>
+              )}
+            </Button>
+
             <div className="text-right hidden sm:block">
               <p className="text-sm font-medium text-foreground">{profile?.full_name || user?.displayName}</p>
               <p className="text-xs text-muted-foreground">{user?.email}</p>

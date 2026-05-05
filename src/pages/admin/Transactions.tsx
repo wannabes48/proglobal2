@@ -26,6 +26,7 @@ import {
   DialogDescription,
   DialogFooter
 } from "@/components/ui/dialog";
+import { createNotification } from "@/lib/notifications";
 
 const ManageTransactions = () => {
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -53,6 +54,13 @@ const ManageTransactions = () => {
   const handleAction = async (tx: any, status: "completed" | "failed") => {
     try {
       await updateDoc(doc(db, "transactions", tx.id), { status });
+
+      const notifTitle = tx.type === 'deposit' ? 'Deposit Update' : 'Withdrawal Update';
+      const notifMsg = status === 'completed' 
+        ? `Your ${tx.type} of $${tx.amount} has been successfully processed and confirmed.`
+        : `Your ${tx.type} of $${tx.amount} was not successful. Please contact support for details.`;
+      
+      await createNotification(tx.user_id, notifTitle, notifMsg, 'transaction');
 
       if (tx.type === "deposit" && status === "completed") {
         await updateDoc(doc(db, "wallets", tx.user_id), {

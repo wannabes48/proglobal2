@@ -10,6 +10,7 @@ import { Copy, QrCode, ArrowRight, CheckCircle2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { addDoc, collection, updateDoc, doc, increment, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { createNotification } from "@/lib/notifications";
 
 const fallbackAddresses = [
   { coin: "Bitcoin",  symbol: "BTC",  address: "Loading...", network: "..."   },
@@ -73,6 +74,13 @@ const Deposit = () => {
         status: "pending",
         timestamp: new Date().toISOString(),
       });
+
+      await createNotification(
+        user.uid,
+        "Deposit Submitted",
+        `Your deposit of $${amount} is currently pending confirmation.`,
+        "transaction"
+      );
 
       setSubmitted(true);
       toast({ title: "Deposit Submitted!", description: "Your deposit proof has been submitted. Funds will be credited after confirmation." });
