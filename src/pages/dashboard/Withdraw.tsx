@@ -108,7 +108,7 @@ const Withdraw = () => {
         status: "pending",
         timestamp: new Date().toISOString()
       });
-      setWallet(prev => ({
+      setWallet((prev: any) => ({
         ...prev,
         balance: (prev?.balance || 0) - withdrawAmount,
         total_withdrawn: (prev?.total_withdrawn || 0) + withdrawAmount
