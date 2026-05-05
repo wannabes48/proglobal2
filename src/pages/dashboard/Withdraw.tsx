@@ -71,7 +71,7 @@ const Withdraw = () => {
 
     setIsSubmitting(true);
     try {
-      await addDoc(collection(db, "transactions"), {
+      const docRef = await addDoc(collection(db, "transactions"), {
         user_id: user.uid,
         type: "withdrawal",
         amount: withdrawAmount,
@@ -91,10 +91,24 @@ const Withdraw = () => {
         description: `Your request for $${withdrawAmount} is being processed.` 
       });
       
+      // Update state immediately for instant UI feedback
+      setLastWithdrawal({
+        id: docRef.id,
+        user_id: user.uid,
+        type: "withdrawal",
+        amount: withdrawAmount,
+        status: "pending",
+        timestamp: new Date().toISOString()
+      });
+      setWallet(prev => ({
+        ...prev,
+        balance: (prev?.balance || 0) - withdrawAmount,
+        total_withdrawn: (prev?.total_withdrawn || 0) + withdrawAmount
+      }));
+      
       setAmount("");
       setAddress("");
       setShowStatus(true);
-      fetchWalletAndLastWithdrawal();
     } catch (error: any) {
       toast({ title: "Withdrawal Failed", description: error.message, variant: "destructive" });
     } finally {
