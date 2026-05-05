@@ -62,7 +62,7 @@ const Dashboard = () => {
         setInvestments(invList);
 
         // Calculate combined live earnings
-        const combinedLiveEarnings = invList.reduce((acc, inv) => acc + parseFloat(inv.total_earned), 0);
+        const combinedLiveEarnings = invList.reduce((acc, inv: any) => acc + parseFloat(inv.total_earned), 0);
         setTotalLiveEarnings(combinedLiveEarnings);
 
         // Calculate 7-day earnings history (Cumulative)
@@ -78,7 +78,7 @@ const Dashboard = () => {
           targetDate.setHours(23, 59, 59, 999); // End of that day
           
           let dayEarnings = 0;
-          invList.forEach(inv => {
+          invList.forEach((inv: any) => {
             const startDate = new Date(inv.start_date);
             if (targetDate >= startDate) {
               // Approximate earnings for that specific day
