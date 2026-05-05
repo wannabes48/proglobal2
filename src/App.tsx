@@ -18,6 +18,7 @@ import Transactions from "./pages/dashboard/Transactions"
 import Referrals from "./pages/dashboard/Referrals"
 import KYC from "./pages/dashboard/KYC"
 import Profile from "./pages/dashboard/Profile"
+import Markets from "./pages/dashboard/Markets"
 import AdminDashboard from "./pages/admin/Dashboard"
 import ManageUsers from "./pages/admin/Users"
 import KYCApprovals from "./pages/admin/KYC"
@@ -59,6 +60,11 @@ function App() {
         <Route path="/dashboard" element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/dashboard/markets" element={
+          <ProtectedRoute>
+            <Markets />
           </ProtectedRoute>
         } />
         <Route path="/dashboard/invest" element={

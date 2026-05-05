@@ -13,7 +13,8 @@ import {
   LogOut, 
   Menu, 
   X,
-  Globe
+  Globe,
+  BarChart3
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -21,6 +22,7 @@ import { cn } from "@/lib/utils";
 
 const menuItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+  { label: "Markets", icon: BarChart3, href: "/dashboard/markets" },
   { label: "Invest", icon: TrendingUp, href: "/dashboard/invest" },
   { label: "Deposit", icon: ArrowDownCircle, href: "/dashboard/deposit" },
   { label: "Withdraw", icon: ArrowUpCircle, href: "/dashboard/withdraw" },
