@@ -88,6 +88,11 @@ function App() {
             <Transactions />
           </ProtectedRoute>
         } />
+        <Route path="/dashboard/notifications" element={
+          <ProtectedRoute>
+            <Notifications />
+          </ProtectedRoute>
+        } />
         <Route path="/dashboard/referrals" element={
           <ProtectedRoute>
             <Referrals />
