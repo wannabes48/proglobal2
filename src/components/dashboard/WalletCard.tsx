@@ -23,7 +23,7 @@ export const WalletCard = ({ balance, totalEarned }: { balance: number; totalEar
             <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider mb-1">Total Earned</p>
             <div className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-emerald-400" />
-              <span className="text-xl font-bold text-foreground">${totalEarned.toLocaleString()}</span>
+              <span className="text-xl font-bold text-white">${totalEarned.toLocaleString()}</span>
             </div>
           </div>
         </div>

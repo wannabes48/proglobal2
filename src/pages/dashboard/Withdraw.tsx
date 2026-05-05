@@ -90,8 +90,8 @@ const Withdraw = () => {
               <ArrowUpCircle className="w-6 h-6 text-primary" />
             </div>
             <CardTitle className="text-2xl font-bold">Withdraw Funds</CardTitle>
-            <CardDescription>
-              Available Balance: <span className="text-primary font-bold">${wallet?.balance?.toLocaleString() || "0"}</span>
+            <CardDescription className="text-muted-foreground/80">
+              Available Balance: <span className="text-gold font-extrabold tracking-tight">${wallet?.balance?.toLocaleString() || "0"}</span>
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -139,8 +139,8 @@ const Withdraw = () => {
                   <span>$0.00</span>
                 </div>
                 <div className="flex justify-between font-bold">
-                  <span>Total to Receive</span>
-                  <span className="text-primary">${amount || "0.00"}</span>
+                  <span className="text-muted-foreground uppercase tracking-widest text-[10px]">Total to Receive</span>
+                  <span className="text-white text-lg font-extrabold tracking-tight">${amount || "0.00"}</span>
                 </div>
               </div>
 
