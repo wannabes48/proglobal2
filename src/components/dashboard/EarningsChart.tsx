@@ -8,22 +8,28 @@ import {
   Tooltip, 
   ResponsiveContainer 
 } from "recharts";
+import { TrendingUp, ArrowUpRight } from "lucide-react";
 
-const data = [
-  { name: "Mon", amount: 400 },
-  { name: "Tue", amount: 700 },
-  { name: "Wed", amount: 600 },
-  { name: "Thu", amount: 1200 },
-  { name: "Fri", amount: 900 },
-  { name: "Sat", amount: 1500 },
-  { name: "Sun", amount: 2100 },
-];
-
-export const EarningsChart = () => {
+export const EarningsChart = ({ data }: { data: any[] }) => {
+  const latestAmount = data.length > 0 ? data[data.length - 1].amount : 0;
+  
   return (
-    <Card className="bg-card/30 border-border">
-      <CardHeader>
-        <CardTitle className="text-xl">Earnings Overview</CardTitle>
+    <Card className="bg-card-luxury border-gold/10 overflow-hidden relative group">
+      <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
+        <TrendingUp className="w-16 h-16 text-gold" />
+      </div>
+      
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-7">
+        <div className="space-y-1">
+          <CardTitle className="text-xl font-display font-bold text-gold">Earnings Overview</CardTitle>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl font-bold text-white">${latestAmount.toLocaleString()}</span>
+            <div className="flex items-center text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+              <ArrowUpRight className="w-3 h-3 mr-0.5" />
+              LIVE ROI
+            </div>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="h-[300px] w-full">

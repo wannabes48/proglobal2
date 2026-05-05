@@ -12,6 +12,7 @@ const Dashboard = () => {
   const [wallet, setWallet] = useState<any>(null);
   const [investments, setInvestments] = useState<any[]>([]);
   const [totalLiveEarnings, setTotalLiveEarnings] = useState(0);
+  const [chartData, setChartData] = useState<any[]>([]);
   const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -56,6 +57,35 @@ const Dashboard = () => {
         // Calculate combined live earnings
         const combinedLiveEarnings = invList.reduce((acc, inv) => acc + parseFloat(inv.total_earned), 0);
         setTotalLiveEarnings(combinedLiveEarnings);
+
+        // Calculate 7-day earnings history (Cumulative)
+        const history: any[] = [];
+        const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        const today = new Date();
+        
+        let cumulativeEarnings = 0;
+        // We calculate daily earnings first, then accumulate
+        for (let i = 6; i >= 0; i--) {
+          const targetDate = new Date(today);
+          targetDate.setDate(today.getDate() - i);
+          targetDate.setHours(23, 59, 59, 999); // End of that day
+          
+          let dayEarnings = 0;
+          invList.forEach(inv => {
+            const startDate = new Date(inv.start_date);
+            if (targetDate >= startDate) {
+              // Approximate earnings for that specific day
+              dayEarnings += (inv.amount * inv.roi_percentage / 100);
+            }
+          });
+          
+          cumulativeEarnings += dayEarnings;
+          history.push({ 
+            name: days[targetDate.getDay()], 
+            amount: parseFloat(cumulativeEarnings.toFixed(2)) 
+          });
+        }
+        setChartData(history);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {
@@ -75,7 +105,7 @@ const Dashboard = () => {
               balance={wallet?.balance || 0} 
               totalEarned={(wallet?.total_earned || 0) + totalLiveEarnings} 
             />
-            <EarningsChart />
+            <EarningsChart data={chartData} />
           </div>
           <div className="space-y-8">
             <ActiveInvestments investments={investments} />
