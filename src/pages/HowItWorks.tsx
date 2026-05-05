@@ -57,7 +57,7 @@ const HowItWorks = () => {
               <div className="relative order-2 lg:order-1">
                 <div className="aspect-[4/5] rounded-3xl overflow-hidden border border-gold/10 shadow-elegant">
                   <img 
-                    src="https://images.unsplash.com/photo-1551288049-bbbda536339a?auto=format&fit=crop&q=80&w=1000" 
+                    src="/platform.png" 
                     alt="Platform Interface" 
                     className="w-full h-full object-cover"
                   />
