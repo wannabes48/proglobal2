@@ -17,11 +17,13 @@ const Transactions = () => {
       if (!user) return;
       const q = query(
         collection(db, "transactions"), 
-        where("user_id", "==", user.uid),
-        orderBy("timestamp", "desc")
+        where("user_id", "==", user.uid)
       );
       const snap = await getDocs(q);
-      setTransactions(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const txs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Sort client-side to avoid index requirement
+      txs.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      setTransactions(txs);
       setLoading(false);
     };
     fetchTransactions();
