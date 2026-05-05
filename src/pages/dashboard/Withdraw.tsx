@@ -27,7 +27,6 @@ const Withdraw = () => {
       const walletSnap = await getDoc(doc(db, "wallets", user.uid));
       if (walletSnap.exists()) setWallet(walletSnap.data());
 
-      // Fetch the absolute last withdrawal to show status
       const q = query(
         collection(db, "transactions"),
         where("user_id", "==", user.uid),
@@ -126,7 +125,7 @@ const Withdraw = () => {
           </CardHeader>
           
           <CardContent className="relative z-10">
-            {lastWithdrawal && showStatus && (
+            {lastWithdrawal && showStatus ? (
               <div className="space-y-6">
                 {lastWithdrawal.status === "pending" ? (
                   <div className="p-8 text-center space-y-6 bg-gold/5 rounded-3xl border border-gold/20 relative overflow-hidden group">
