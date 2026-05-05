@@ -3,7 +3,7 @@ import { WalletCard } from "@/components/dashboard/WalletCard";
 import { ActiveInvestments } from "@/components/dashboard/ActiveInvestments";
 import { EarningsChart } from "@/components/dashboard/EarningsChart";
 import { AllocationChart } from "@/components/dashboard/AllocationChart";
-import { WatchlistWidget } from "@/components/dashboard/WatchlistWidget";
+import WatchlistWidget from "@/components/dashboard/WatchlistWidget";
 import { InvestmentDetailModal } from "@/components/dashboard/InvestmentDetailModal";
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
