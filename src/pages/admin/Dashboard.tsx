@@ -50,6 +50,12 @@ const AdminDashboard = () => {
         const invSnap = await getDocs(query(collection(db, "investments"), where("status", "==", "active")));
         const kycSnap = await getDocs(query(collection(db, "profiles"), where("kyc_status", "==", "pending")));
         
+        // Build users map for quick lookup
+        const usersMap = new Map();
+        usersSnap.docs.forEach(doc => {
+          usersMap.set(doc.id, doc.data());
+        });
+
         // Detailed data for tables
         const now = new Date();
         const investments = invSnap.docs.map(doc => {
@@ -61,7 +67,16 @@ const AdminDashboard = () => {
           const elapsedDays = elapsedMs / (24 * 60 * 60 * 1000);
           const totalEarned = (data.amount * (data.roi_percentage / 100) * elapsedDays).toFixed(2);
           
-          return { id: doc.id, ...data, progress: progress || 0, total_earned: totalEarned };
+          const userProfile = usersMap.get(data.user_id);
+          
+          return { 
+            id: doc.id, 
+            ...data, 
+            progress: progress || 0, 
+            total_earned: totalEarned,
+            user_name: userProfile?.full_name || "Unknown User",
+            user_email: userProfile?.email || "No email"
+          };
         });
 
         const recentTxSnap = await getDocs(query(collection(db, "transactions"), orderBy("timestamp", "desc"), limit(10)));
@@ -212,6 +227,7 @@ const AdminDashboard = () => {
                 <table className="w-full text-sm text-left">
                   <thead className="text-[10px] uppercase bg-black/20 text-muted-foreground border-b border-white/5">
                     <tr>
+                      <th className="px-6 py-4">Investor</th>
                       <th className="px-6 py-4">Contract</th>
                       <th className="px-6 py-4 text-center">Progress</th>
                       <th className="px-6 py-4 text-right">Action</th>
@@ -221,28 +237,42 @@ const AdminDashboard = () => {
                     {recentInvestments.slice(0, 5).map((inv) => (
                       <tr key={inv.id} className="hover:bg-gold/5 transition-colors group">
                         <td className="px-6 py-4">
-                          <p className="font-bold text-white uppercase text-xs">{inv.plan_name}</p>
-                          <p className="text-[9px] text-muted-foreground font-mono mt-1">${inv.amount.toLocaleString()} • {inv.user_id.slice(0, 8)}...</p>
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-[hsl(43_85%_52%/0.1)] border border-[hsl(43_85%_52%/0.2)] flex items-center justify-center text-gold font-bold text-xs shadow-inner">
+                              {inv.user_name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="font-bold text-white text-xs">{inv.user_name}</p>
+                              <p className="text-[9px] text-muted-foreground">{inv.user_email}</p>
+                            </div>
+                          </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
-                              <div className="h-full bg-gold" style={{ width: `${inv.progress}%` }} />
+                          <p className="font-bold text-white uppercase text-xs">{inv.plan_name}</p>
+                          <p className="text-[9px] text-gold font-mono mt-1 font-semibold">${inv.amount.toLocaleString()} Invested</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-1.5 w-full max-w-[120px] mx-auto">
+                            <div className="flex items-center justify-between text-[9px] font-bold">
+                              <span className="text-muted-foreground">{inv.roi_percentage}% ROI</span>
+                              <span className="text-gold">{inv.progress}%</span>
                             </div>
-                            <span className="text-[9px] font-bold text-gold">{inv.progress}%</span>
+                            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                              <div className="h-full bg-gradient-gold shadow-[0_0_10px_rgba(234,179,8,0.5)]" style={{ width: `${inv.progress}%` }} />
+                            </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 text-right">
                           <Button 
                             variant="ghost" 
                             size="sm" 
-                            className="h-7 w-7 p-0 rounded-full hover:bg-gold hover:text-black transition-colors"
+                            className="h-8 w-8 p-0 rounded-full hover:bg-gold hover:text-black transition-colors bg-white/5 border border-white/10 shadow-sm"
                             onClick={() => {
                               setSelectedEntity(inv);
                               setIsModalOpen(true);
                             }}
                           >
-                            <Eye className="w-3.5 h-3.5" />
+                            <Eye className="w-4 h-4" />
                           </Button>
                         </td>
                       </tr>
