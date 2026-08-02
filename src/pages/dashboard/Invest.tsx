@@ -38,8 +38,12 @@ const Invest = () => {
       if (!user) return;
       
       // Fetch wallet
-      const walletSnap = await getDoc(doc(db, "wallets", user.uid));
-      if (walletSnap.exists()) setWallet(walletSnap.data());
+      try {
+        const walletSnap = await getDoc(doc(db, "wallets", user.uid));
+        if (walletSnap.exists()) setWallet(walletSnap.data());
+      } catch (err) {
+        console.error("Failed to fetch wallet", err);
+      }
 
       // Fetch plans
       try {
@@ -62,8 +66,12 @@ const Invest = () => {
           const durationMs = data.duration_days * 24 * 60 * 60 * 1000;
           const progress = Math.min(100, Math.floor((elapsedMs / durationMs) * 100));
           return { id: d.id, ...data, progress: progress || 0 };
+        }) as any[];
+        invs.sort((a, b) => {
+          const timeA = a.start_date ? new Date(a.start_date).getTime() : 0;
+          const timeB = b.start_date ? new Date(b.start_date).getTime() : 0;
+          return timeB - timeA;
         });
-        invs.sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
         setMyInvestments(invs);
       } catch (err) {
         console.error("Failed to load investments", err);
@@ -147,7 +155,7 @@ const Invest = () => {
         <div className="flex items-center gap-3 p-4 rounded-2xl bg-[hsl(43_85%_52%/0.08)] border border-[hsl(43_85%_52%/0.2)] mb-8">
           <Wallet className="w-5 h-5 text-gold shrink-0" />
           <span className="text-sm text-muted-foreground">Available Balance:</span>
-          <span className="font-bold text-gold text-lg">${wallet.balance?.toLocaleString() ?? "0"}</span>
+          <span className="font-bold text-gold text-lg">${Number(wallet.balance || 0).toLocaleString()}</span>
         </div>
       )}
 
@@ -275,7 +283,7 @@ const Invest = () => {
                     <div key={inv.id} className="p-5 rounded-xl bg-card-luxury border border-[hsl(43_85%_52%/0.15)] flex flex-col md:flex-row gap-6 justify-between items-center hover:shadow-glow transition-all">
                        <div className="w-full md:w-auto text-left">
                          <p className="font-bold text-white text-lg uppercase tracking-wide">{inv.plan_name}</p>
-                         <p className="text-xs text-muted-foreground mt-1 font-medium">Invested: <span className="text-foreground">${inv.amount.toLocaleString()}</span> &nbsp;•&nbsp; {new Date(inv.start_date).toLocaleDateString()}</p>
+                         <p className="text-xs text-muted-foreground mt-1 font-medium">Invested: <span className="text-foreground">${Number(inv.amount || 0).toLocaleString()}</span> &nbsp;•&nbsp; {inv.start_date ? new Date(inv.start_date).toLocaleDateString() : 'N/A'}</p>
                        </div>
                        
                        <div className="flex-1 max-w-md w-full px-4">
