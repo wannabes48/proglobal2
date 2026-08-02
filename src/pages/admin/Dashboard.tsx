@@ -9,7 +9,7 @@ import {
   Activity
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, where, orderBy, limit } from "firebase/firestore";
+import { collection, getDocs, query, where, orderBy, limit, writeBatch, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { InvestmentDetailModal } from "@/components/dashboard/InvestmentDetailModal";
@@ -24,7 +24,7 @@ import {
   Tooltip, 
   ResponsiveContainer 
 } from "recharts";
-import { ArrowDownCircle, ArrowUpRight, Search, Eye } from "lucide-react";
+import { ArrowDownCircle, ArrowUpRight, Search, Eye, CheckCircle } from "lucide-react";
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
@@ -39,8 +39,66 @@ const AdminDashboard = () => {
   const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
   const [selectedEntity, setSelectedEntity] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [settlingId, setSettlingId] = useState<string | null>(null);
   const [_loading, setLoading] = useState(true);
   const { toast } = useToast();
+
+  const handleSettleInvestment = async (inv: any) => {
+    try {
+      setSettlingId(inv.id);
+      const batch = writeBatch(db);
+      
+      // Update investment status
+      const invRef = doc(db, "investments", inv.id);
+      batch.update(invRef, { status: "completed" });
+      
+      // Fetch user's wallet and process payout
+      const walletRef = doc(db, "wallets", inv.user_id);
+      const walletSnap = await getDoc(walletRef);
+      
+      if (walletSnap.exists()) {
+        const wallet = walletSnap.data();
+        const payoutAmount = Number(inv.amount) + Number(inv.total_earned);
+        
+        batch.update(walletRef, {
+          balance: Number(wallet.balance) + payoutAmount,
+          total_earned: Number(wallet.total_earned) + Number(inv.total_earned)
+        });
+        
+        const txRef = doc(collection(db, "transactions"));
+        batch.set(txRef, {
+          user_id: inv.user_id,
+          type: "payout",
+          amount: payoutAmount,
+          status: "completed",
+          timestamp: new Date().toISOString(),
+          description: `Payout for ${inv.plan_name} contract`
+        });
+        
+        const notifRef = doc(collection(db, "notifications"));
+        batch.set(notifRef, {
+          user_id: inv.user_id,
+          title: "Investment Matured",
+          message: `Your ${inv.plan_name} investment has matured. A payout of $${payoutAmount.toLocaleString()} has been credited to your wallet.`,
+          read: false,
+          created_at: new Date().toISOString()
+        });
+      }
+      
+      await batch.commit();
+      toast({ title: "Investment Settled", description: "The investment has been successfully settled and paid out." });
+      setRecentInvestments(prev => prev.filter(i => i.id !== inv.id));
+      
+      setStats(prev => ({
+        ...prev,
+        activeInvestments: prev.activeInvestments - 1
+      }));
+    } catch (error: any) {
+      toast({ title: "Settlement Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setSettlingId(null);
+    }
+  };
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -263,17 +321,35 @@ const AdminDashboard = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-8 w-8 p-0 rounded-full hover:bg-gold hover:text-black transition-colors bg-white/5 border border-white/10 shadow-sm"
-                            onClick={() => {
-                              setSelectedEntity(inv);
-                              setIsModalOpen(true);
-                            }}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
+                          <div className="flex items-center justify-end gap-2">
+                            {inv.progress >= 100 && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 px-2 text-emerald-400 border-emerald-400/30 bg-emerald-400/10 hover:bg-emerald-400/20"
+                                onClick={() => handleSettleInvestment(inv)}
+                                disabled={settlingId === inv.id}
+                              >
+                                {settlingId === inv.id ? "..." : (
+                                  <>
+                                    <CheckCircle className="w-3.5 h-3.5 mr-1" />
+                                    Settle
+                                  </>
+                                )}
+                              </Button>
+                            )}
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-8 w-8 p-0 rounded-full hover:bg-gold hover:text-black transition-colors bg-white/5 border border-white/10 shadow-sm"
+                              onClick={() => {
+                                setSelectedEntity(inv);
+                                setIsModalOpen(true);
+                              }}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
