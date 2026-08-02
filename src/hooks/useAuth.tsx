@@ -118,8 +118,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     },
     signInWithGoogle: async () => {
       const provider = new GoogleAuthProvider();
-      provider.addScope("email");
-      provider.addScope("profile");
       const userCredential = await signInWithPopup(auth, provider);
       await ensureWalletAndProfile(userCredential.user, { auth_provider: "google" });
       return userCredential;
