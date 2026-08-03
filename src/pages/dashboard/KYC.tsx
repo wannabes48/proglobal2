@@ -3,17 +3,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { ShieldCheck, Upload, FileText, CheckCircle, Clock } from "lucide-react";
+import { ShieldCheck, FileText, CheckCircle, Clock } from "lucide-react";
 import { useState } from "react";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { doc, updateDoc } from "firebase/firestore";
-import { db, storage } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
+import { KycDropzone } from "@/components/ui/kyc-dropzone";
 
 const KYC = () => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
-  const [file, setFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
+  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (profile?.kyc_status === "verified") {
     return (
@@ -32,27 +32,23 @@ const KYC = () => {
     );
   }
 
-  const handleUpload = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !file) return;
+    if (!user || !uploadedUrl) return;
 
-    setIsUploading(true);
+    setIsSubmitting(true);
     try {
-      const storageRef = ref(storage, `kyc/${user.uid}/${file.name}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-
       await updateDoc(doc(db, "profiles", user.uid), {
         kyc_status: "pending",
-        kyc_document_url: url,
+        kyc_document_url: uploadedUrl,
         kyc_submitted_at: new Date().toISOString(),
       });
 
-      toast({ title: "KYC Submitted", description: "Your documents have been uploaded and are under review." });
+      toast({ title: "KYC Submitted", description: "Your documents have been successfully uploaded and are under review." });
     } catch (error: any) {
-      toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
+      toast({ title: "Submission Failed", description: error.message, variant: "destructive" });
     } finally {
-      setIsUploading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -87,47 +83,26 @@ const KYC = () => {
                 <p className="text-sm text-muted-foreground">
                   Your submitted documents were rejected. Please ensure the document is clear, valid, and matches your profile details.
                 </p>
-                <form onSubmit={handleUpload} className="space-y-6 mt-6 text-left">
+                <form onSubmit={handleSubmit} className="space-y-6 mt-6 text-left">
                    <div className="space-y-4">
-                     <div className="border-2 border-dashed border-[hsl(43_85%_52%/0.3)] rounded-2xl p-12 text-center space-y-4 hover:border-gold/50 transition-colors relative bg-card/50">
-                       <input 
-                         type="file" 
-                         className="absolute inset-0 opacity-0 cursor-pointer" 
-                         onChange={(e) => setFile(e.target.files?.[0] || null)}
-                         accept="image/*,.pdf"
-                       />
-                       <div className="w-16 h-16 rounded-full bg-[hsl(43_85%_52%/0.1)] flex items-center justify-center mx-auto">
-                         <Upload className="w-8 h-8 text-gold" />
-                       </div>
-                       <div>
-                         <p className="font-semibold text-foreground">{file ? file.name : "Click or drag to upload a new ID"}</p>
-                         <p className="text-xs text-muted-foreground mt-1">PNG, JPG or PDF up to 10MB</p>
-                       </div>
-                     </div>
+                     <KycDropzone 
+                       onUploadSuccess={(url) => setUploadedUrl(url)} 
+                       onReset={() => setUploadedUrl(null)} 
+                     />
                    </div>
-                   <Button type="submit" className="w-full h-12" variant="gradient" disabled={!file || isUploading}>
-                     {isUploading ? "Uploading Documents..." : "RESUBMIT FOR VERIFICATION"}
+                   <Button type="submit" className="w-full h-12" variant="gradient" disabled={!uploadedUrl || isSubmitting}>
+                     {isSubmitting ? "Submitting..." : "RESUBMIT FOR VERIFICATION"}
                    </Button>
                  </form>
               </div>
             ) : (
-              <form onSubmit={handleUpload} className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-4">
-                  <div className="border-2 border-dashed border-[hsl(43_85%_52%/0.3)] rounded-2xl p-12 text-center space-y-4 hover:border-gold/50 transition-colors relative bg-card/50">
-                    <input 
-                      type="file" 
-                      className="absolute inset-0 opacity-0 cursor-pointer" 
-                      onChange={(e) => setFile(e.target.files?.[0] || null)}
-                      accept="image/*,.pdf"
-                    />
-                    <div className="w-16 h-16 rounded-full bg-[hsl(43_85%_52%/0.1)] flex items-center justify-center mx-auto">
-                      <Upload className="w-8 h-8 text-gold" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-foreground">{file ? file.name : "Click or drag to upload ID"}</p>
-                      <p className="text-xs text-muted-foreground mt-1">PNG, JPG or PDF up to 10MB</p>
-                    </div>
-                  </div>
+                  
+                  <KycDropzone 
+                    onUploadSuccess={(url) => setUploadedUrl(url)} 
+                    onReset={() => setUploadedUrl(null)} 
+                  />
 
                   <div className="space-y-4">
                     <div className="flex items-start gap-3 text-sm p-4 rounded-xl bg-[hsl(43_85%_52%/0.05)] border border-[hsl(43_85%_52%/0.15)]">
@@ -140,8 +115,8 @@ const KYC = () => {
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full h-12" variant="gradient" disabled={!file || isUploading}>
-                  {isUploading ? "Uploading Documents..." : "SUBMIT FOR VERIFICATION"}
+                <Button type="submit" className="w-full h-12" variant="gradient" disabled={!uploadedUrl || isSubmitting}>
+                  {isSubmitting ? "Submitting..." : "SUBMIT FOR VERIFICATION"}
                 </Button>
               </form>
             )}
